@@ -13,22 +13,22 @@ public class VacationService {
 		
 		vacations = new HashMap<String, Vacation>();
 		Vacation v1 = new Vacation();
-		v1.setFirstName("John");
+		v1.setFirstName("Alice");
 		v1.setLastName("Doe");
 		v1.setId("1");
 		v1.setHours(80);
 		
 		Vacation v2 = new Vacation();
-		v2.setFirstName("Jane");
+		v2.setFirstName("Jack");
 		v2.setLastName("Doe");
 		v2.setId("2");
 		v2.setHours(55);
 
 		Vacation v3 = new Vacation();
-		v3.setFirstName("Jack");
+		v3.setFirstName("Jane");
 		v3.setLastName("Doe");
 		v3.setId("3");
-		v3.setHours(40);
+		v3.setHours(140);
 
 		vacations.put(v1.getId(), v1);
 		vacations.put(v2.getId(), v2);
