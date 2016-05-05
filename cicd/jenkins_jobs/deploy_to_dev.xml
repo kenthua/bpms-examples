@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Deploy the maven artifacts to bpm dev environment</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+printenv
+
+rm -rf /tmp/bpmUndeployDevStatus.xml
+
+curl -XPOST \
+--basic \
+--user admin:passw0rd! \
+http://${BPM_RUNTIME_DEV_HOST}:${BPM_RUNTIME_DEV_PORT}/business-central/rest/deployment/${POM_GROUPID}:${POM_ARTIFACTID}:${POM_VERSION}/undeploy \
+&gt; /tmp/bpmUndeployDevStatus.xml
+
+cat /tmp/bpmUndeployDevStatus.xml
+
+export BPM_UNDEPLOY_STATUS=`cat /tmp/bpmUndeployDevStatus.xml | grep -oPm1 &quot;(?&lt;=&lt;success&gt;)[^&lt;]+&quot;`
+
+printf &quot;\nBPM_UNDEPLOY_STATUS: $BPM_UNDEPLOY_STATUS&quot;
+
+sleep 5
+
+# true/false doesn&apos;t matter as long as it is undeployed
+if [[ &quot;true&quot; == $BPM_UNDEPLOY_STATUS || &quot;false&quot; == $BPM_UNDEPLOY_STATUS || &quot;&quot; == $BPM_UNDEPLOY_STATUS ]]
+then
+     printf &quot;\nSUCCESS\n&quot;
+     exit 0
+else
+     printf &quot;\nFAILED\n&quot;
+     exit 1
+fi</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+rm -rf /tmp/bpmDeployDevStatus.xml
+
+curl -XPOST \
+--basic \
+--user admin:passw0rd! \
+http://${BPM_RUNTIME_DEV_HOST}:${BPM_RUNTIME_DEV_PORT}/business-central/rest/deployment/${POM_GROUPID}:${POM_ARTIFACTID}:${POM_VERSION}/deploy \
+&gt; /tmp/bpmDeployDevStatus.xml
+
+cat /tmp/bpmDeployDevStatus.xml
+
+export BPM_DEPLOY_STATUS=`cat /tmp/bpmDeployDevStatus.xml | grep -oPm1 &quot;(?&lt;=&lt;success&gt;)[^&lt;]+&quot;`
+
+printf &quot;\nBPM_DEPLOY_STATUS: $BPM_DEPLOY_STATUS&quot;
+
+if [[ &quot;true&quot; == $BPM_DEPLOY_STATUS ]]
+then
+     printf &quot;\nSUCCESS\n&quot;
+     exit 0
+else
+     printf &quot;\nFAILED\n&quot;
+     exit 1
+fi</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.28">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>POM_GROUPID=${POM_GROUPID}
+POM_ARTIFACTID=${POM_ARTIFACTID}
+POM_VERSION=${POM_VERSION}
+BPM_PROCESS_DEF_ID=${BPM_PROCESS_DEF_ID}
+BPM_RUNTIME_DEV_HOST=${BPM_RUNTIME_DEV_HOST}
+BPM_RUNTIME_DEV_PORT=${BPM_RUNTIME_DEV_PORT}
+BPM_RUNTIME_TEST_HOST=${BPM_RUNTIME_TEST_HOST}
+BPM_RUNTIME_TEST_PORT=${BPM_RUNTIME_TEST_PORT}
+BPM_RUNTIME_QA_HOST=${BPM_RUNTIME_QA_HOST}
+BPM_RUNTIME_QA_PORT=${BPM_RUNTIME_QA_PORT}
+</properties>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>bpm_integration_test</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+  </publishers>
+  <buildWrappers/>
+</project>

@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Perform an integration test by executing the process and checking the BPM process history for results.</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+rm /tmp/bpmProcInstId.xml
+rm /tmp/bpmStatus.xml
+
+curl -XPOST \
+--silent \
+--basic \
+--user admin:passw0rd! \
+http://${BPM_RUNTIME_DEV_HOST}:${BPM_RUNTIME_DEV_PORT}/business-central/rest/runtime/${POM_GROUPID}:${POM_ARTIFACTID}:${POM_VERSION}/process/${BPM_PROCESS_DEF_ID}/start \
+&gt; /tmp/bpmProcInstId.xml
+sleep 1
+
+cat /tmp/bpmProcInstId.xml
+
+export BPM_INT_TEST_PROC_ID=`cat /tmp/bpmProcInstId.xml | grep -oPm1 &quot;(?&lt;=&lt;id&gt;)[^&lt;]+&quot;`
+
+printf &quot;\nBPM_INT_TEST_PROC_ID: $BPM_INT_TEST_PROC_ID&quot;
+
+curl -XGET \
+--silent \
+--basic \
+--user admin:passw0rd! \
+http://${BPM_RUNTIME_DEV_HOST}:${BPM_RUNTIME_DEV_PORT}/business-central/rest/history/instance/$BPM_INT_TEST_PROC_ID \
+&gt; /tmp/bpmStatus.xml
+
+cat /tmp/bpmStatus.xml
+
+export BPM_INT_TEST_STATUS=`cat /tmp/bpmStatus.xml | grep -oPm1 &quot;(?&lt;=&lt;status&gt;)[^&lt;]+&quot;`
+
+printf &quot;\nBPM_INT_TEST_STATUS: $BPM_INT_TEST_STATUS&quot;
+
+if [[ &quot;2&quot; == $BPM_INT_TEST_STATUS ]]
+then
+     printf &quot;\nSUCCESS\n&quot;
+     exit 0
+else
+     printf &quot;\nFAILED\n&quot;
+     exit 1
+fi</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.28">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>POM_GROUPID=${POM_GROUPID}
+POM_ARTIFACTID=${POM_ARTIFACTID}
+POM_VERSION=${POM_VERSION}
+BPM_PROCESS_DEF_ID=${BPM_PROCESS_DEF_ID}
+BPM_RUNTIME_DEV_HOST=${BPM_RUNTIME_DEV_HOST}
+BPM_RUNTIME_DEV_PORT=${BPM_RUNTIME_DEV_PORT}
+BPM_RUNTIME_TEST_HOST=${BPM_RUNTIME_TEST_HOST}
+BPM_RUNTIME_TEST_PORT=${BPM_RUNTIME_TEST_PORT}
+BPM_RUNTIME_QA_HOST=${BPM_RUNTIME_QA_HOST}
+BPM_RUNTIME_QA_PORT=${BPM_RUNTIME_QA_PORT}
+</properties>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>deploy_to_test, deploy_to_qa</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+  </publishers>
+  <buildWrappers/>
+</project>

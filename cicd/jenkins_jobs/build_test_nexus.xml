@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<maven2-moduleset plugin="maven-plugin@2.7.1">
+  <actions/>
+  <description>Perform a maven test and package.  Then push to the nexus repository.</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.4.0">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>http://192.168.99.100:10080/gogsadmin/customer</url>
+        <credentialsId>6ac986fa-2c28-4a78-952b-9f82b150f037</credentialsId>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <rootModule>
+    <groupId>customer</groupId>
+    <artifactId>evaluation</artifactId>
+  </rootModule>
+  <rootPOM>evaluation/pom.xml</rootPOM>
+  <goals>test package -s $MAVEN_SETTINGS</goals>
+  <aggregatorStyleBuild>true</aggregatorStyleBuild>
+  <incrementalBuild>false</incrementalBuild>
+  <ignoreUpstremChanges>true</ignoreUpstremChanges>
+  <archivingDisabled>false</archivingDisabled>
+  <siteArchivingDisabled>false</siteArchivingDisabled>
+  <fingerprintingDisabled>false</fingerprintingDisabled>
+  <resolveDependencies>false</resolveDependencies>
+  <processPlugins>false</processPlugins>
+  <mavenValidationLevel>-1</mavenValidationLevel>
+  <runHeadless>false</runHeadless>
+  <disableTriggerDownstreamProjects>false</disableTriggerDownstreamProjects>
+  <blockTriggerWhenBuilding>true</blockTriggerWhenBuilding>
+  <settings class="jenkins.mvn.DefaultSettingsProvider"/>
+  <globalSettings class="jenkins.mvn.DefaultGlobalSettingsProvider"/>
+  <reporters/>
+  <publishers>
+    <hudson.maven.RedeployPublisher>
+      <id>deployment</id>
+      <url>http://192.168.99.100:8081/content/repositories/releases/</url>
+      <uniqueVersion>true</uniqueVersion>
+      <evenIfUnstable>false</evenIfUnstable>
+    </hudson.maven.RedeployPublisher>
+    <hudson.plugins.parameterizedtrigger.BuildTrigger plugin="parameterized-trigger@2.28">
+      <configs>
+        <hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+          <configs>
+            <hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+              <properties>POM_GROUPID=${POM_GROUPID}
+POM_ARTIFACTID=${POM_ARTIFACTID}
+POM_VERSION=${POM_VERSION}
+BPM_PROCESS_DEF_ID=customer.evaluation
+BPM_RUNTIME_DEV_HOST=192.168.99.1
+BPM_RUNTIME_DEV_PORT=8280
+BPM_RUNTIME_TEST_HOST=192.168.99.1
+BPM_RUNTIME_TEST_PORT=8380
+BPM_RUNTIME_QA_HOST=192.168.99.1
+BPM_RUNTIME_QA_PORT=8480</properties>
+            </hudson.plugins.parameterizedtrigger.PredefinedBuildParameters>
+          </configs>
+          <projects>deploy_to_dev</projects>
+          <condition>SUCCESS</condition>
+          <triggerWithNoParameters>false</triggerWithNoParameters>
+        </hudson.plugins.parameterizedtrigger.BuildTriggerConfig>
+      </configs>
+    </hudson.plugins.parameterizedtrigger.BuildTrigger>
+  </publishers>
+  <buildWrappers>
+    <hudson.plugins.ws__cleanup.PreBuildCleanup plugin="ws-cleanup@0.28">
+      <deleteDirs>false</deleteDirs>
+      <cleanupParameter></cleanupParameter>
+      <externalDelete></externalDelete>
+    </hudson.plugins.ws__cleanup.PreBuildCleanup>
+    <org.jenkinsci.plugins.configfiles.buildwrapper.ConfigFileBuildWrapper plugin="config-file-provider@2.9.3">
+      <managedFiles>
+        <org.jenkinsci.plugins.configfiles.buildwrapper.ManagedFile>
+          <fileId>org.jenkinsci.plugins.configfiles.maven.GlobalMavenSettingsConfig1441914692051</fileId>
+          <targetLocation>settings.xml</targetLocation>
+          <variable>MAVEN_SETTINGS</variable>
+        </org.jenkinsci.plugins.configfiles.buildwrapper.ManagedFile>
+      </managedFiles>
+    </org.jenkinsci.plugins.configfiles.buildwrapper.ConfigFileBuildWrapper>
+  </buildWrappers>
+  <prebuilders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+# updated dependencies for external build outside of BPM Suite
+
+cd evaluation
+
+export BPM_DEPENDENCY_SET=`grep -e &apos;jbpm-bpmn2&apos; pom.xml | wc -l`
+
+printf &quot;\nBPM_DEPENDENCY_SET: $BPM_DEPENDENCY_SET\n&quot;
+
+if [[ &quot;1&quot; == $BPM_DEPENDENCY_SET ]]
+then
+ 	printf &quot;\n&gt;&gt; CONTENT EXISTS - DO NOTHING\n&quot;
+	exit 0 
+else
+	printf &quot;\nUPDATE POM CONTENTS&quot;
+  sed -i -e &apos;s/&lt;\/plugin&gt;/ \
+  &lt;dependencies&gt; \
+         &lt;dependency&gt; \
+           &lt;groupId&gt;org.jbpm&lt;\/groupId&gt; \
+           &lt;artifactId&gt;jbpm-bpmn2&lt;\/artifactId&gt; \
+           &lt;version&gt;6.2.0.Final-redhat-9&lt;\/version&gt; \
+         &lt;\/dependency&gt; \
+           &lt;dependency&gt; \
+                          &lt;groupId&gt;org.drools&lt;\/groupId&gt; \
+                          &lt;artifactId&gt;drools-decisiontables&lt;\/artifactId&gt; \
+                          &lt;version&gt;6.2.0.Final-redhat-9&lt;\/version&gt; \
+                      &lt;\/dependency&gt; \
+      &lt;\/dependencies&gt; \
+  &lt;\/plugin&gt; \
+  /&apos; pom.xml
+  exit 0
+fi</command>
+    </hudson.tasks.Shell>
+  </prebuilders>
+  <postbuilders>
+    <hudson.tasks.Shell>
+      <command>printenv</command>
+    </hudson.tasks.Shell>
+  </postbuilders>
+  <runPostStepsIfResult>
+    <name>SUCCESS</name>
+    <ordinal>0</ordinal>
+    <color>BLUE</color>
+    <completeBuild>true</completeBuild>
+  </runPostStepsIfResult>
+</maven2-moduleset>

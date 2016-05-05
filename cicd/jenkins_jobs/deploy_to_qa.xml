@@ -1,0 +1,79 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Deploy the maven artifacts to bpm qa environment</description>
+  <logRotator class="hudson.tasks.LogRotator">
+    <daysToKeep>-1</daysToKeep>
+    <numToKeep>5</numToKeep>
+    <artifactDaysToKeep>-1</artifactDaysToKeep>
+    <artifactNumToKeep>-1</artifactNumToKeep>
+  </logRotator>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+rm -rf /tmp/bpmUndeployQAStatus.xml
+
+curl -XPOST \
+--basic \
+--user admin:passw0rd! \
+http://${BPM_RUNTIME_QA_HOST}:${BPM_RUNTIME_QA_PORT}/business-central/rest/deployment/${POM_GROUPID}:${POM_ARTIFACTID}:${POM_VERSION}/undeploy \
+&gt; /tmp/bpmUndeployQAStatus.xml
+
+cat /tmp/bpmUndeployQAStatus.xml
+
+export BPM_UNDEPLOY_STATUS=`cat /tmp/bpmUndeployQAStatus.xml | grep -oPm1 &quot;(?&lt;=&lt;success&gt;)[^&lt;]+&quot;`
+
+printf &quot;\nBPM_UNDEPLOY_STATUS: $BPM_UNDEPLOY_STATUS&quot;
+
+sleep 5
+
+# true/false doesn&apos;t matter as long as it is undeployed
+if [[ &quot;true&quot; == $BPM_UNDEPLOY_STATUS || &quot;false&quot; == $BPM_UNDEPLOY_STATUS || &quot;&quot; == $BPM_UNDEPLOY_STATUS ]]
+then
+     printf &quot;\nSUCCESS\n&quot;
+     exit 0
+else
+     printf &quot;\nFAILED\n&quot;
+     exit 1
+fi</command>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+rm -rf /tmp/bpmDeployQAStatus.xml
+
+curl -XPOST \
+--basic \
+--user admin:passw0rd! \
+http://${BPM_RUNTIME_QA_HOST}:${BPM_RUNTIME_QA_PORT}/business-central/rest/deployment/${POM_GROUPID}:${POM_ARTIFACTID}:${POM_VERSION}/deploy \
+&gt; /tmp/bpmDeployQAStatus.xml
+
+cat /tmp/bpmDeployQAStatus.xml
+
+export BPM_DEPLOY_STATUS=`cat /tmp/bpmDeployQAStatus.xml | grep -oPm1 &quot;(?&lt;=&lt;success&gt;)[^&lt;]+&quot;`
+
+printf &quot;\nBPM_DEPLOY_STATUS: $BPM_DEPLOY_STATUS&quot;
+
+if [[ &quot;true&quot; == $BPM_DEPLOY_STATUS ]]
+then
+     printf &quot;\nSUCCESS\n&quot;
+     exit 0
+else
+     printf &quot;\nFAILED\n&quot;
+     exit 1
+fi</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
