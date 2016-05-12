@@ -1,7 +1,7 @@
 Vacation Request Process
 ===
 
-Tested: JBoss BPM Suite 6.2.2 / JBoss EAP 6.4.7
+Tested: JBoss BPM Suite 6.3 / JBoss EAP 6.4.7
 
 # Functionality demonstrated:
 - REST Service (GET & POST)
